@@ -178,6 +178,12 @@
 
           setStatus('<span class="spinner"></span>Sending to our team...');
 
+          // n8n holds the connection open while it waits for the WhatsApp reply,
+          // so we race the fetch against a 6s timer and treat either a 2xx response
+          // or a timeout as success (the request was accepted and is being processed).
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 6000);
+
           try {
             const response = await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
               method: 'POST',
@@ -187,19 +193,24 @@
                 latitude,
                 longitude,
                 accuracy: Math.round(accuracy)
-              })
+              }),
+              signal: controller.signal
             });
+            clearTimeout(timer);
 
-            if (response.ok) {
-              setStatus('✓ Location shared successfully — our team has it now.', 'success');
-              btn.textContent = 'Location sent';
-            } else {
-              throw new Error('Server error');
-            }
+            if (!response.ok) throw new Error('Server error ' + response.status);
           } catch (err) {
-            setStatus('Something went wrong sending your location. Please tell the agent your address directly.', 'error');
-            btn.disabled = false;
+            clearTimeout(timer);
+            if (err.name !== 'AbortError') {
+              setStatus('Something went wrong sending your location. Please tell the agent your address directly.', 'error');
+              btn.disabled = false;
+              return;
+            }
+            // AbortError means n8n is still processing (waiting on WhatsApp) — that's fine
           }
+
+          setStatus('✓ Location shared successfully — our team has it now.', 'success');
+          btn.textContent = 'Location sent';
         },
         (error) => {
           btn.disabled = false;
