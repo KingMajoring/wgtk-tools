@@ -150,7 +150,7 @@
     // session_id is injected into the URL by n8n when the SMS is sent
     // e.g. https://yoursite.com/locate.html?session=abc123
     const _params = new URLSearchParams(window.location.search);
-    const _jobId = _params.get('job_id') || null;
+    console.log('URL params:', window.location.search, 'job_id:', _params.get('job_id'));
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status');
@@ -173,7 +173,8 @@
         async (position) => {
           const { latitude, longitude, accuracy } = position.coords;
 
-          setStatus(`📍 Got location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m) — sending...`);
+          const _jobId = new URLSearchParams(window.location.search).get('job_id') || null;
+          setStatus(`📍 Got location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m) job_id:${_jobId} — sending...`);
 
           try {
             await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
