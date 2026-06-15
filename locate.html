@@ -187,7 +187,7 @@
           try {
             // no-cors: n8n has CORS enabled but the response status/body doesn't
             // matter here — we just need n8n to receive the location data.
-            await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
+            await fetch('https://wgtkapi.app.n8n.cloud/webhook/receive-location', {
               method: 'POST',
               mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
