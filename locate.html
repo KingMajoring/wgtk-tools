@@ -149,10 +149,9 @@
   <script>
     // session_id is injected into the URL by n8n when the SMS is sent
     // e.g. https://yoursite.com/locate.html?session=abc123
-    function getSessionId() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('session') || params.get('session_id') || '';
-    }
+    const _params = new URLSearchParams(window.location.search);
+    const _sessionId = _params.get('session') || _params.get('session_id') || '';
+    const _mobile = _params.get('mobile') || null;
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status');
@@ -174,7 +173,6 @@
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude, accuracy } = position.coords;
-          const sessionId = getSessionId();
 
           setStatus('<span class="spinner"></span>Sending to our team...');
 
@@ -192,7 +190,8 @@
               mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                session_id: sessionId,
+                session_id: _sessionId,
+                mobile: _mobile,
                 latitude,
                 longitude,
                 accuracy: Math.round(accuracy)
