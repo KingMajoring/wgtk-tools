@@ -185,33 +185,26 @@
           const timer = setTimeout(() => controller.abort(), 6000);
 
           try {
-            const response = await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
+            // no-cors: n8n has CORS enabled but the response status/body doesn't
+            // matter here — we just need n8n to receive the location data.
+            await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
               method: 'POST',
+              mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 session_id: sessionId,
                 latitude,
                 longitude,
                 accuracy: Math.round(accuracy)
-              }),
-              signal: controller.signal
+              })
             });
             clearTimeout(timer);
-
-            if (!response.ok) {
-              const body = await response.text().catch(() => '');
-              throw new Error(`Server error ${response.status}: ${body}`);
-            }
           } catch (err) {
             clearTimeout(timer);
-            if (err.name === 'AbortError') {
-              // n8n took >6s — request was received, treat as success
-            } else {
-              console.error('Location send failed:', err);
-              setStatus('Something went wrong sending your location. Please tell the agent your address directly.', 'error');
-              btn.disabled = false;
-              return;
-            }
+            console.error('Location send failed:', err);
+            setStatus('Something went wrong sending your location. Please tell the agent your address directly.', 'error');
+            btn.disabled = false;
+            return;
           }
 
           setStatus('✓ Location shared successfully — our team has it now.', 'success');
