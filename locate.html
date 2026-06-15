@@ -150,8 +150,7 @@
     // session_id is injected into the URL by n8n when the SMS is sent
     // e.g. https://yoursite.com/locate.html?session=abc123
     const _params = new URLSearchParams(window.location.search);
-    const _sessionId = _params.get('session') || _params.get('session_id') || '';
-    const _mobile = _params.get('mobile') || null;
+    const _jobId = _params.get('job_id') || null;
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status');
@@ -181,8 +180,8 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                session_id: _sessionId,
-                mobile: _mobile,
+                type: 'location',
+                job_id: _jobId,
                 latitude,
                 longitude,
                 accuracy: Math.round(accuracy)
