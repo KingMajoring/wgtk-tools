@@ -176,18 +176,9 @@
 
           setStatus('<span class="spinner"></span>Sending to our team...');
 
-          // n8n holds the connection open while it waits for the WhatsApp reply,
-          // so we race the fetch against a 6s timer and treat either a 2xx response
-          // or a timeout as success (the request was accepted and is being processed).
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 6000);
-
           try {
-            // no-cors: n8n has CORS enabled but the response status/body doesn't
-            // matter here — we just need n8n to receive the location data.
             await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
               method: 'POST',
-              mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 session_id: _sessionId,
@@ -197,9 +188,7 @@
                 accuracy: Math.round(accuracy)
               })
             });
-            clearTimeout(timer);
           } catch (err) {
-            clearTimeout(timer);
             console.error('Location send failed:', err);
             setStatus('Something went wrong sending your location. Please tell the agent your address directly.', 'error');
             btn.disabled = false;
