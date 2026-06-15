@@ -174,7 +174,7 @@
         async (position) => {
           const { latitude, longitude, accuracy } = position.coords;
 
-          setStatus('<span class="spinner"></span>Sending to our team...');
+          setStatus(`📍 Got location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m) — sending...`);
 
           try {
             await fetch('https://wgtkapi.app.n8n.cloud/webhook/send-location-sms', {
