@@ -600,7 +600,8 @@
       try {
         await fetch('https://wgtkapi.app.n8n.cloud/webhook/WAReschedule', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             job_id: jobId,
             client_name: clientName,
