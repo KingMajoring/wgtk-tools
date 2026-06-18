@@ -129,6 +129,43 @@
       font-weight: 400;
     }
 
+    /* FIND ME BUTTON */
+    .btn-findme {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--orange);
+      border-radius: 12px;
+      padding: 18px 24px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-findme:active { transform: scale(0.97); background: rgba(255,107,0,0.1); }
+    .btn-findme:disabled { border-color: #333; color: #555; cursor: not-allowed; }
+
+    .findme-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+      text-align: center;
+    }
+
+    .findme-status.success { color: var(--success); }
+    .findme-status.error { color: #f87171; }
+
     /* INPUT ROW */
     .input-row {
       display: flex;
@@ -432,15 +469,22 @@
   <div class="hero">
     <div class="hero-eyebrow">Update Job Location</div>
     <div class="hero-title">WHERE ARE<br>YOU <span>NOW?</span></div>
-    <div class="hero-sub">Enter your postcode below and we'll update the location for your booking. Our team will be heading to the right place.</div>
+    <div class="hero-sub">Use your GPS location or enter your postcode to update the address for your booking.</div>
     <div class="job-badge">Job ref: <strong id="job-ref">—</strong></div>
   </div>
 
   <div class="form-wrap" id="form-wrap">
 
+    <!-- FIND ME -->
+    <div class="form-section">
+      <div class="form-label">Use my GPS location</div>
+      <button class="btn-findme" id="findme-btn" onclick="findMe()">📍 Find my location</button>
+      <div class="findme-status" id="findme-status"></div>
+    </div>
+
     <!-- POSTCODE LOOKUP -->
     <div class="form-section">
-      <label class="form-label" for="postcode">Your postcode</label>
+      <label class="form-label" for="postcode">Or enter your postcode</label>
       <div class="input-row">
         <input
           type="text"
@@ -477,7 +521,7 @@
     <div class="notice">
       <div class="notice-icon">📍</div>
       <div class="notice-text">
-        <strong>Your technician will be updated immediately.</strong> Make sure the address is correct before submitting.
+        <strong>This will update the team</strong> and they will call back to discuss.
       </div>
     </div>
 
@@ -515,6 +559,90 @@
     document.getElementById('success-ref').textContent = jobId;
 
     let selectedPostcode = '';
+
+    async function findMe() {
+      const btn = document.getElementById('findme-btn');
+      const status = document.getElementById('findme-status');
+
+      if (!navigator.geolocation) {
+        status.className = 'findme-status error';
+        status.textContent = 'GPS not available on this device.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Getting your location…';
+      status.className = 'findme-status';
+      status.textContent = '';
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          status.textContent = 'Got GPS fix — looking up address…';
+
+          try {
+            const res = await fetch('https://wgtkapi.app.n8n.cloud/webhook/WAGeocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat, lng, job_id: jobId })
+            });
+
+            if (!res.ok) throw new Error('bad response');
+            const data = await res.json();
+            const address = data.address || data.full_address || '';
+
+            if (address) {
+              document.getElementById('full-address').value = address;
+              document.getElementById('postcode').value = data.postcode || '';
+              status.className = 'findme-status success';
+              status.textContent = '✓ Address found — please check and confirm below.';
+            } else {
+              fallbackGps(lat, lng, status);
+            }
+          } catch (e) {
+            fallbackGps(lat, lng, status);
+          }
+
+          btn.disabled = false;
+          btn.textContent = '📍 Find my location';
+        },
+        (err) => {
+          btn.disabled = false;
+          btn.textContent = '📍 Find my location';
+          status.className = 'findme-status error';
+          if (err.code === 1) {
+            status.textContent = 'Location access denied — please enter your postcode below.';
+          } else {
+            status.textContent = 'Could not get your location — please enter your postcode below.';
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    // Fallback: if n8n geocode fails, use postcodes.io reverse lookup for area only
+    async function fallbackGps(lat, lng, status) {
+      try {
+        const res = await fetch(`https://api.postcodes.io/postcodes?lon=${lng}&lat=${lat}`);
+        const data = await res.json();
+        if (data.status === 200 && data.result && data.result.length > 0) {
+          const r = data.result[0];
+          document.getElementById('postcode').value = r.postcode;
+          selectedPostcode = r.postcode;
+          const area = [r.admin_ward, r.admin_district, r.admin_county].filter(Boolean).join(', ');
+          document.getElementById('full-address').value = `${area}, ${r.postcode}`;
+          status.className = 'findme-status success';
+          status.textContent = '✓ Area found — please add your street and house number.';
+        } else {
+          status.className = 'findme-status error';
+          status.textContent = 'Could not look up address — please enter it manually below.';
+        }
+      } catch (e) {
+        status.className = 'findme-status error';
+        status.textContent = 'Could not look up address — please enter it manually below.';
+      }
+    }
 
     // Allow Enter key in postcode field to trigger lookup
     document.getElementById('postcode').addEventListener('keydown', function(e) {
